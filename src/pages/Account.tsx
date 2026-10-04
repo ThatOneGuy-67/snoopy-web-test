@@ -20,6 +20,12 @@ export default function Account() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    const hash = new URLSearchParams(window.location.hash.slice(1));
+    if (hash.get('error_code') === 'otp_expired') {
+      setError('That confirmation link has expired or was already used. Enter your email below to request a fresh link.');
+      setMode('forgot');
+      window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.search}`);
+    }
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data } = supabase.auth.onAuthStateChange((event, next) => { if (event === 'PASSWORD_RECOVERY') setMode('reset'); setSession(next); });
     return () => data.subscription.unsubscribe();
@@ -40,14 +46,14 @@ export default function Account() {
         setMessage('You are signed in.');
       } else if (mode === 'sign-up') {
         if (password.length < 8) throw new Error('Use a password with at least 8 characters.');
-        const { data, error: authError } = await supabase.auth.signUp({ email, password, options: { data: { username } } });
+        const { data, error: authError } = await supabase.auth.signUp({ email, password, options: { data: { username }, emailRedirectTo: `${window.location.origin}${import.meta.env.BASE_URL}account` } });
         if (authError) throw authError;
         if (data.user) await (supabase as any).from('profiles').upsert({ id: data.user.id, username, display_name: displayName || username });
         setMessage('Account created. Check your email if verification is enabled.');
       } else if (mode === 'forgot') {
         const { error: authError } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}account` });
         if (authError) throw authError;
-        setMessage('If that email exists, a reset link is on its way.');
+        setMessage('If that email exists, a fresh email link is on its way.');
       } else {
         const { error: authError } = await supabase.auth.updateUser({ password });
         if (authError) throw authError;
