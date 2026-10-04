@@ -154,6 +154,7 @@ const Admin = () => {
   const [content, setContent] = useState<any[]>([]);
   const [contentKind, setContentKind] = useState("game");
   const [contentSearch, setContentSearch] = useState("");
+  const [accountUsers, setAccountUsers] = useState<any[]>([]);
 
   const load = useCallback(async () => {
     try {
@@ -182,13 +183,14 @@ const Admin = () => {
       setStatsError("");
       setPollError("");
 
-      const [statsResult, announcementsResult, pollsResult, settingsResult, logsResult, contentResult] = await Promise.all([
+      const [statsResult, announcementsResult, pollsResult, settingsResult, logsResult, contentResult, usersResult] = await Promise.all([
         (supabase as any).rpc("get_admin_stats"),
         (supabase as any).from("announcements").select("*").order("created_at", { ascending: false }),
         (supabase as any).from("polls").select("*").order("created_at", { ascending: false }),
         (supabase as any).rpc("get_site_settings"),
         (supabase as any).rpc("get_admin_activity", { p_limit: 100 }),
         (supabase as any).from("content_items").select("*").order("updated_at", { ascending: false }),
+        (supabase as any).rpc("get_admin_users"),
       ]);
 
       try {
@@ -209,6 +211,7 @@ const Admin = () => {
       if (!settingsResult.error) setSiteSettings(Object.fromEntries(Object.entries(settingsResult.data ?? {}).map(([key, value]) => [key, value === true])));
       if (!logsResult.error) setActivityLogs(logsResult.data ?? []);
       if (!contentResult.error) setContent(contentResult.data ?? []);
+      if (!usersResult.error) setAccountUsers(usersResult.data ?? []);
 
       if (pollsResult.error) {
         setPollError(errorMessage(pollsResult.error, "Unable to load polls."));
@@ -383,6 +386,7 @@ const Admin = () => {
   const nav = [
     ["overview", "Dashboard", BarChart3],
     ["users", "Users", Users],
+    ["accounts", "Accounts", Users],
     ["analytics", "Analytics", BarChart3],
     ["site", "Site Control", SlidersHorizontal],
     ["announcements", "Announcements", Megaphone],
@@ -510,6 +514,8 @@ const Admin = () => {
         </>}
 
         {tab === "users" && <section><h2 className="text-3xl font-bold">Users & Visitors</h2><p className="mt-1 text-white/50">Search, inspect, and manage visitor access.</p><input className="mt-6 w-full rounded-lg bg-black/30 border border-white/10 p-3" placeholder="Search visitor ID or nickname" onChange={e => setContentSearch(e.target.value.toLowerCase())}/><div className="mt-5 space-y-3">{(stats?.all_visitors ?? []).filter(v => !contentSearch || v.visitor_id.toLowerCase().includes(contentSearch)).map(v => <div key={v.visitor_id} className="rounded-xl border border-white/10 bg-white/5 p-4 flex items-center justify-between gap-3"><div><div className="font-medium">{v.visitor_id}</div><div className="text-sm text-white/50">{v.is_online ? "Online" : "Offline"} · {v.visit_count ?? 0} visits</div></div><button className="rounded-lg bg-red-400/15 px-3 py-2 text-sm text-red-300" onClick={() => void setVisitorBan(v.visitor_id, !v.banned)}>{v.banned ? "Unban" : "Ban"}</button></div>)}</div></section>}
+
+        {tab === "accounts" && <section><h2 className="text-3xl font-bold">Accounts</h2><p className="mt-1 text-white/50">Registered accounts and the names they use across the site.</p><div className="mt-6 space-y-3">{accountUsers.map(user => <article key={user.id} className="rounded-xl border border-white/10 bg-white/5 p-4"><div className="flex flex-wrap items-baseline justify-between gap-2"><h3 className="font-semibold">{user.display_name || user.username}</h3><span className="text-xs text-white/40">{user.email}</span></div><p className="mt-2 text-sm text-white/60">Username: {user.username} · Chat name: {user.chat_name || user.display_name || user.username}</p><p className="mt-1 text-xs text-white/40">Joined {user.created_at ? new Date(user.created_at).toLocaleString() : "—"}</p></article>)}{!accountUsers.length && <p className="text-white/40">No account profiles found. Apply the profiles migration first.</p>}</div></section>}
 
         {tab === "analytics" && <section><h2 className="text-3xl font-bold">Analytics</h2><div className="mt-6 grid gap-4 sm:grid-cols-3">{[["Online now",stats?.online??0],["Visitors",stats?.visitors??0],["Sessions",stats?.sessions??0]].map(([label,value])=><div key={label} className="rounded-2xl border border-white/10 bg-white/5 p-5"><p className="text-white/50">{label}</p><p className="mt-2 text-4xl font-bold">{value}</p></div>)}</div><div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5"><h3 className="font-semibold">Top paths and devices</h3><p className="mt-2 text-sm text-white/50">Live session detail is available from the Dashboard visitor list.</p></div></section>}
 
