@@ -2,9 +2,12 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   username text not null unique check (char_length(username) between 2 and 32),
   display_name text not null default '' check (char_length(display_name) <= 64),
+  chat_name text check (chat_name is null or char_length(chat_name) between 3 and 32),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.profiles add column if not exists chat_name text check (chat_name is null or char_length(chat_name) between 3 and 32);
 
 alter table public.profiles enable row level security;
 grant select, insert, update on public.profiles to authenticated;

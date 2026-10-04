@@ -15,6 +15,7 @@ export default function Account() {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [chatName, setChatName] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -33,8 +34,8 @@ export default function Account() {
 
   useEffect(() => {
     if (!session?.user) return;
-    (supabase as any).from('profiles').select('username, display_name').eq('id', session.user.id).maybeSingle()
-      .then(({ data }: any) => data && (setProfile(data), setUsername(data.username ?? ''), setDisplayName(data.display_name ?? '')));
+    (supabase as any).from('profiles').select('username, display_name, chat_name').eq('id', session.user.id).maybeSingle()
+      .then(({ data }: any) => data && (setProfile(data), setUsername(data.username ?? ''), setDisplayName(data.display_name ?? ''), setChatName(data.chat_name ?? '')));
   }, [session]);
 
   const submit = async (event: FormEvent) => {
@@ -65,15 +66,16 @@ export default function Account() {
 
   const saveProfile = async (event: FormEvent) => {
     event.preventDefault(); setBusy(true); setError(''); setMessage('');
-    const { error: saveError } = await (supabase as any).from('profiles').upsert({ id: session.user.id, username: username.trim(), display_name: displayName.trim() || username.trim() });
-    if (saveError) setError(saveError.message); else { setProfile({ username, display_name: displayName }); setMessage('Profile saved.'); }
+    const nextChatName = chatName.trim() || displayName.trim() || username.trim();
+    const { error: saveError } = await (supabase as any).from('profiles').upsert({ id: session.user.id, username: username.trim(), display_name: displayName.trim() || username.trim(), chat_name: nextChatName });
+    if (saveError) setError(saveError.message); else { setProfile({ username, display_name: displayName }); setChatName(nextChatName); setMessage('Account settings saved.'); }
     setBusy(false);
   };
 
   if (session?.user && mode !== 'reset') return <main className="min-h-screen p-4 md:p-8"><div className="mx-auto max-w-xl glass-panel p-6 md:p-8">
     <Link to="/" className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary"><ArrowLeft className="h-4 w-4" /> Back to home</Link>
     <div className="mb-6 flex items-center gap-3"><UserRound className="h-8 w-8 text-primary" /><div><h1 className="text-2xl font-bold">Your account</h1><p className="text-sm text-muted-foreground">{session.user.email}</p></div></div>
-    <form onSubmit={saveProfile} className="space-y-4"><label className="block text-sm">Username<input className={inputClass} value={username} onChange={e => setUsername(e.target.value)} required maxLength={32} /></label><label className="block text-sm">Display name<input className={inputClass} value={displayName} onChange={e => setDisplayName(e.target.value)} maxLength={64} /></label><button disabled={busy} className="rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground">Save profile</button></form>
+    <div className="mb-4 border-b border-border pb-3 text-sm text-primary">Profile &amp; account settings</div><form onSubmit={saveProfile} className="space-y-4"><label className="block text-sm">Username<input className={inputClass} value={username} onChange={e => setUsername(e.target.value)} required maxLength={32} /></label><label className="block text-sm">Display name<input className={inputClass} value={displayName} onChange={e => setDisplayName(e.target.value)} maxLength={64} /></label><label className="block text-sm">Chat name<input className={inputClass} value={chatName} onChange={e => setChatName(e.target.value)} placeholder="Defaults to your display name" minLength={3} maxLength={32} /><span className="mt-1 block text-xs text-muted-foreground">This name is used in chat and can be different from your display name.</span></label><button disabled={busy} className="rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground">Save account settings</button></form>
     <div className="mt-6 flex flex-wrap gap-3"><button onClick={() => { setMode('forgot'); setEmail(session.user.email ?? ''); setSession(null); }} className="rounded-lg border border-border px-4 py-2">Change password</button><button onClick={() => supabase.auth.signOut()} className="inline-flex items-center gap-2 rounded-lg border border-destructive/50 px-4 py-2 text-destructive"><LogOut className="h-4 w-4" /> Sign out</button></div>
     {message && <p className="mt-4 text-sm text-primary">{message}</p>}{error && <p className="mt-4 text-sm text-destructive">{error}</p>}
   </div></main>;
