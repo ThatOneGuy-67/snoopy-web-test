@@ -2900,7 +2900,7 @@ function sendGif(g){ getActiveChatRef().push({name:username,msg:g,admin:isAdmin,
 
 // Load saved username and password on page load
 const accountName = new URLSearchParams(location.search).get("accountName");
-const savedUsername = localStorage.getItem("savedUsername") || accountName;
+const savedUsername = accountName || localStorage.getItem("savedUsername");
 const savedPassword = localStorage.getItem("savedPassword");
 if(savedUsername){
   usernameInput.value = savedUsername;
