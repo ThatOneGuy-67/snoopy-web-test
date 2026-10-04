@@ -272,6 +272,7 @@ const Index = () => {
                 onOpenPalette={() => setPaletteOpen(true)}
                 onChangeLayout={l => setSettings(s => ({ ...s, layoutStyle: l }))}
                 onCycleTheme={cycleThemePreview}
+                onOpenAccount={() => routerNavigate('/account')}
               />
             </div>
 
